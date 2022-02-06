@@ -6,19 +6,23 @@
             }"></span>
             SYNC
         </div>
+        <span v-if="copied" class="text-sm">
+            COPIED: {{ copied }}
+        </span>
         <table style="width: 100%;">
-            <thead>
-                <th>Ticket ID</th>
+            <thead style="background-color: #e2e8f0;">
+                <th>Task ID</th>
                 <th>Description</th>
                 <th>Total Logged</th>
                 <th></th>
             </thead>
             <tbody>
-            <tr v-for="entry in entries">
+            <tr v-for="entry in entries" class="hover:bg-gray-100 dark:hover:bg-gray-700">
                 <td>{{ entry.ticket_id }}</td>
                 <td>{{ entry.description }}</td>
                 <td>{{ entry.duration }}</td>
-                <td><span
+                <td>
+                    <span
                         @click="copyDuration(entry.duration)"
                         class="far fa-clipboard"
                         style="cursor: pointer;"
@@ -35,7 +39,8 @@ export default {
     data() {
         return {
             entries: [],
-            syncing: false
+            syncing: false,
+            copied: null
         }
     },
     methods: {
@@ -63,7 +68,13 @@ export default {
                 });
         },
         copyDuration(duration) {
-            navigator.clipboard.writeText(duration);        }
+            navigator.clipboard.writeText(duration);
+
+            this.copied = duration;
+            setTimeout(fade => {
+                this.copied = null;
+            }, 2000);
+        }
     },
     mounted() {
         this.getEntries();
