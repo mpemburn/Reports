@@ -11,12 +11,19 @@
                 <th>Ticket ID</th>
                 <th>Description</th>
                 <th>Total Logged</th>
+                <th></th>
             </thead>
             <tbody>
             <tr v-for="entry in entries">
                 <td>{{ entry.ticket_id }}</td>
                 <td>{{ entry.description }}</td>
-                <td class="text-right">{{ entry.duration }}</td>
+                <td>{{ entry.duration }}</td>
+                <td><span
+                        @click="copyDuration(entry.duration)"
+                        class="far fa-clipboard"
+                        style="cursor: pointer;"
+                    ></span>
+                </td>
             </tr>
             </tbody>
         </table>
@@ -54,7 +61,9 @@ export default {
                     this.syncing = false;
                     console.log(response);
                 });
-        }
+        },
+        copyDuration(duration) {
+            navigator.clipboard.writeText(duration);        }
     },
     mounted() {
         this.getEntries();

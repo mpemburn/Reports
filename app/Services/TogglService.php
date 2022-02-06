@@ -70,6 +70,7 @@ class TogglService
                 $duration = trim($timeParts->implode(' '));
 
                 return [
+                    'id' => $toggl->id,
                     'ticket_id' => $toggl->ticket_id,
                     'description' => $toggl->description,
                     'duration' => $duration
