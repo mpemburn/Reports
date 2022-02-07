@@ -11,14 +11,14 @@
         </span>
         <table style="width: 100%;">
             <thead style="background-color: #e2e8f0;">
-                <th>Task ID</th>
+                <th class="py-2">Task ID</th>
                 <th>Description</th>
                 <th>Total Logged</th>
                 <th></th>
             </thead>
             <tbody>
             <tr v-for="entry in entries" class="hover:bg-gray-100 dark:hover:bg-gray-700">
-                <td>{{ entry.ticket_id }}</td>
+                <td class="py-2">{{ entry.ticket_id }}</td>
                 <td>{{ entry.description }}</td>
                 <td>{{ entry.duration }}</td>
                 <td>
