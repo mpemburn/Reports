@@ -2,14 +2,24 @@
 
 namespace App\Services;
 
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Ixudra\Toggl\Facades\Toggl as TogglApi;
 use App\Models\Toggl;
 use DateInterval;
 use Illuminate\Support\Carbon;
 use PhpOffice\PhpSpreadsheet\Reader\Csv;
+use stdClass;
 
 class TogglService
 {
+    protected Collection $syncIds;
+
+    public function __construct()
+    {
+        $this->syncIds = collect();
+    }
+
     public function importFromApi(string $start = null, string $end = null): void
     {
         if ($start && $end) {
@@ -28,31 +38,39 @@ class TogglService
             if (is_array($item)) {
                 collect($item)->each(function ($entry) {
                     if (property_exists($entry, 'id')) {
+                        // Save this ID in the collection to facilitate soft deletes
+                        $this->syncIds->push($entry->id);
                         // Make sure this isn't a duplicate
                         if (Toggl::where('public_id', $entry->id)->exists()) {
                             return;
                         }
-                        // Parse the ticket ID out of the description
-                        preg_match('/(TS-[\d]+|TRAK-[\d]+)(.*)/', $entry->description, $matches);
 
-                        if (isset($matches[1])) {
-                            $toggl = new Toggl([
-                                'public_id' => $entry->id,
-                                'uid' => $entry->uid,
-                                'ticket_id' => $matches[1],
-                                'description' => trim($matches[2]),
-                                'duration' => $entry->dur,
-                                'start_time' => Carbon::parse($entry->start),
-                                'end_time' => Carbon::parse($entry->end),
-                            ]);
-
-                            $toggl->save();
-                        }
+                        $this->saveEntry($entry);
                     }
                 });
             }
         });
+        $this->deleteRemovedItems();
+    }
 
+    protected function saveEntry(stdClass $entry): void
+    {
+        // Parse the ticket ID out of the description
+        preg_match('/(TS-[\d]+|TRAK-[\d]+)(.*)/', $entry->description, $matches);
+
+        if (isset($matches[1])) {
+            $toggl = new Toggl([
+                'public_id' => $entry->id,
+                'uid' => $entry->uid,
+                'ticket_id' => $matches[1],
+                'description' => trim($matches[2]),
+                'duration' => $entry->dur,
+                'start_time' => Carbon::parse($entry->start),
+                'end_time' => Carbon::parse($entry->end),
+            ]);
+
+            $toggl->save();
+        }
     }
 
     public function getEntries()
@@ -89,6 +107,15 @@ class TogglService
             });
 
         return $midnight->diff($aggregate->addSeconds($total));
+    }
+
+    protected function deleteRemovedItems(): void
+    {
+        $removed = Toggl::whereNotIn('public_id', $this->syncIds->toArray());
+
+        $removed->get()->each(function (Toggl $toggl) {
+            $toggl->delete();
+        });
     }
 
 }
