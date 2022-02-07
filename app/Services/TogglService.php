@@ -53,6 +53,25 @@ class TogglService
         $this->deleteRemovedItems();
     }
 
+    public function getEntries()
+    {
+        return Toggl::select(['ticket_id', 'description'])
+            ->groupBy(['ticket_id', 'description'])
+            ->orderBy('start_time', 'DESC')
+            ->get()
+            ->map(function (Toggl $toggl) {
+                $total = $this->calculateDuration($toggl->ticket_id);
+                $duration = $this->durationToString($total);
+
+                return [
+                    'id' => $toggl->id,
+                    'ticket_id' => $toggl->ticket_id,
+                    'description' => $toggl->description,
+                    'duration' => $duration
+                ];
+            })->toArray();
+    }
+
     protected function saveEntry(stdClass $entry): void
     {
         // Parse the ticket ID out of the description
@@ -73,30 +92,7 @@ class TogglService
         }
     }
 
-    public function getEntries()
-    {
-        return Toggl::select(['ticket_id', 'description'])
-            ->groupBy(['ticket_id', 'description'])
-            ->orderBy('start_time', 'DESC')
-            ->get()
-            ->map(function (Toggl $toggl) {
-                $timeParts = collect();
-                $total = $this->calculateTicket($toggl->ticket_id);
-                $timeParts->push($total->d > 0 ? "{$total->d} " . trans_choice('time.day', $total->d) : null);
-                $timeParts->push($total->h > 0 ? "{$total->h} " . trans_choice('time.hour', $total->h) : null);
-                $timeParts->push($total->i > 0 ? "{$total->i} " . trans_choice('time.minute', $total->i) : null);
-                $duration = trim($timeParts->implode(' '));
-
-                return [
-                    'id' => $toggl->id,
-                    'ticket_id' => $toggl->ticket_id,
-                    'description' => $toggl->description,
-                    'duration' => $duration
-                ];
-            })->toArray();
-    }
-
-    protected function calculateTicket($ticketId): DateInterval
+    protected function calculateDuration($ticketId): DateInterval
     {
         $midnight = Carbon::now('America/New_York')->startOfDay();
         $aggregate = Carbon::now('America/New_York')->startOfDay();
@@ -107,6 +103,16 @@ class TogglService
             });
 
         return $midnight->diff($aggregate->addSeconds($total));
+    }
+
+    protected function durationToString(DateInterval $total): string
+    {
+        $timeParts = collect();
+        $timeParts->push($total->d > 0 ? "{$total->d} " . trans_choice('time.day', $total->d) : null);
+        $timeParts->push($total->h > 0 ? "{$total->h} " . trans_choice('time.hour', $total->h) : null);
+        $timeParts->push($total->i > 0 ? "{$total->i} " . trans_choice('time.minute', $total->i) : null);
+
+        return trim($timeParts->implode(' '));
     }
 
     protected function deleteRemovedItems(): void
