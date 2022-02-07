@@ -22,6 +22,7 @@ class CreateTogglTable extends Migration
             $table->string('duration');
             $table->dateTime('start_time');
             $table->dateTime('end_time');
+            $table->softDeletes();
             $table->timestamps();
         });
     }
