@@ -55,8 +55,8 @@ class TogglService
 
     public function getEntries()
     {
-        return Toggl::select(['ticket_id', 'description'])
-            ->groupBy(['ticket_id', 'description'])
+        return Toggl::select(['ticket_id', 'description', 'start_time', 'end_time'])
+            ->groupBy('ticket_id')
             ->orderBy('start_time', 'DESC')
             ->get()
             ->map(function (Toggl $toggl) {
