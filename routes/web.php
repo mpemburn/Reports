@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\LivewireController;
 use App\Http\Controllers\ReportController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,24 @@ Route::get('/', function () {
 //
 //});
 
+Route::get('/git', function () {
+    $locals = storage_path('app/public/data/') . 'locals.txt';
+    $localsData = collect(explode("\n", file_get_contents($locals)));
+    $remotes = storage_path('app/public/data/') . 'remotes.txt';
+    $remotesData = collect(explode("\n", file_get_contents($remotes)));
+
+    if ($remotesData->contains('bugfix/TRAK-150-present-settings-option-name')) {
+        echo 'It does';
+    }
+
+    $localsData->each(function ($branch) use ($remotesData) {
+        $remotesData->contains(function ($value, $key) use ($branch) {
+            return $value !== $branch;
+        });
+    });
+
+});
+
 
 Route::group(['middleware' => 'auth'], function(){
     Route::get('/dashboard', function () {
@@ -39,6 +58,7 @@ Route::group(['middleware' => 'auth'], function(){
     })->name('dashboard');
 
     Route::get('/reports', ReportController::class . '@index')->name('reports');
+    Route::get('/livewire', LivewireController::class . '@index')->name('livewire');
 });
 
 require __DIR__.'/auth.php';
