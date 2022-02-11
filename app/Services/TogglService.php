@@ -55,11 +55,12 @@ class TogglService
 
     public function getEntries()
     {
-        return Toggl::select(['ticket_id', 'description', 'start_time', 'end_time'])
+        return Toggl::select(['ticket_id', 'description'])
             ->groupBy('ticket_id')
             ->orderBy('start_time', 'DESC')
             ->get()
             ->map(function (Toggl $toggl) {
+                $dateSpan = $this->calculateDateSpan($toggl->ticket_id);
                 $total = $this->calculateDuration($toggl->ticket_id);
                 $duration = $this->durationToString($total);
 
@@ -67,6 +68,7 @@ class TogglService
                     'id' => $toggl->id,
                     'ticket_id' => $toggl->ticket_id,
                     'description' => $toggl->description,
+                    'date_span' => $dateSpan,
                     'duration' => $duration
                 ];
             })->toArray();
@@ -103,6 +105,22 @@ class TogglService
             });
 
         return $midnight->diff($aggregate->addSeconds($total));
+    }
+
+    protected function calculateDateSpan($ticketId): string
+    {
+        $start = null;
+        $end = null;
+        Toggl::where('ticket_id', $ticketId)->orderBy('start_time')
+            ->each(function (Toggl $toggl) use (&$start, &$end) {
+                if (! $start) {
+                    $start = Carbon::parse($toggl->start_time)->format(('n/j/Y'));
+                }
+
+                $end = Carbon::parse($toggl->end_time)->format(('n/j/Y'));
+            });
+
+        return $start === $end ?  $start : $start . ' - ' . $end;
     }
 
     protected function durationToString(DateInterval $total): string
