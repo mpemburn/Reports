@@ -2,13 +2,11 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Ixudra\Toggl\Facades\Toggl as TogglApi;
 use App\Models\Toggl;
 use DateInterval;
 use Illuminate\Support\Carbon;
-use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use stdClass;
 
 class TogglService
@@ -20,7 +18,7 @@ class TogglService
         $this->syncIds = collect();
     }
 
-    public function importFromApi(string $start = null, string $end = null): void
+    public function importFromApi(string $start = null, string $end = null): bool
     {
         if ($start && $end) {
             $data[ 'since' ] = Carbon::parse($start)
@@ -41,7 +39,9 @@ class TogglService
                         // Save this ID in the collection to facilitate soft deletes
                         $this->syncIds->push($entry->id);
                         // Make sure this isn't a duplicate
-                        if (Toggl::where('public_id', $entry->id)->exists()) {
+                        $found = Toggl::where('public_id', $entry->id);
+                        if ($found->exists() && $this->hasBeenUpdated($found->first(), $entry)) {
+                            $this->updateEntry($entry, $found->first());
                             return;
                         }
 
@@ -51,6 +51,8 @@ class TogglService
             }
         });
         $this->deleteRemovedItems();
+
+        return true;
     }
 
     public function getEntries()
@@ -88,9 +90,27 @@ class TogglService
                 'duration' => $entry->dur,
                 'start_time' => Carbon::parse($entry->start),
                 'end_time' => Carbon::parse($entry->end),
+                'updated' => Carbon::parse($entry->updated),
             ]);
 
             $toggl->save();
+        }
+    }
+
+    protected function updateEntry(stdClass $entry, Toggl $toggl): void
+    {
+        // Parse the ticket ID out of the description
+        preg_match('/(TS-[\d]+|TRAK-[\d]+)(.*)/', $entry->description, $matches);
+
+        if (isset($matches[1])) {
+            $toggl->ticket_id = $matches[1];
+            $toggl->description = trim($matches[2]);
+            $toggl->duration = $entry->dur;
+            $toggl->start_time = Carbon::parse($entry->start);
+            $toggl->end_time = Carbon::parse($entry->end);
+            $toggl->updated = Carbon::parse($entry->updated);
+
+            $toggl->update();
         }
     }
 
@@ -131,6 +151,11 @@ class TogglService
         $timeParts->push($total->i > 0 ? "{$total->i} " . trans_choice('time.minute', $total->i) : null);
 
         return trim($timeParts->implode(' '));
+    }
+
+    protected function hasBeenUpdated(Toggl $toggl, stdClass $entry): bool
+    {
+        return Carbon::parse($entry->updated)->isAfter(Carbon::parse($toggl->updated));
     }
 
     protected function deleteRemovedItems(): void

@@ -17,6 +17,7 @@ class Toggl extends Model
         'description',
         'duration',
         'start_time',
-        'end_time'
+        'end_time',
+        'updated',
     ];
 }
