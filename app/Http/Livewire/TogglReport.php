@@ -7,17 +7,21 @@ use Livewire\Component;
 
 class TogglReport extends Component
 {
-    private TogglService $service;
+    public bool $syncing = false;
+    public array $data = [];
 
-    public function mount(TogglService $service)
+    public function syncWithToggl(): void
     {
-        $this->service = $service;
+        $this->syncing = true;
+        if ((new TogglService())->importFromApi()) {
+            $this->syncing = false;
+        }
     }
 
     public function render()
     {
-        $data = $this->service->getEntries();
+        $this->data = (new TogglService())->getEntries();
 
-        return view('components.toggl-report', ['data' => $data]);
+        return view('components.toggl-report', ['data' => $this->data, 'syncing' => $this->syncing]);
     }
 }
