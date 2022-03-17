@@ -24705,6 +24705,7 @@ __webpack_require__.r(__webpack_exports__);
       var _this = this;
 
       axios.get('/api/toggl').then(function (response) {
+        console.log(response);
         _this.entries = response.data.report;
       })["catch"](function (response) {
         console.log(response);
@@ -24736,7 +24737,7 @@ __webpack_require__.r(__webpack_exports__);
     }
   },
   mounted: function mounted() {
-    this.getEntries();
+    this.syncWithToggl();
   }
 });
 

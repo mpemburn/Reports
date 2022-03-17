@@ -49,6 +49,7 @@ export default {
         getEntries() {
             axios.get('/api/toggl')
                 .then(response => {
+                    console.log(response);
                     this.entries = response.data.report;
                 })
                 .catch(response => {
@@ -79,7 +80,7 @@ export default {
         }
     },
     mounted() {
-        this.getEntries();
+        this.syncWithToggl();
     }
 }
 </script>

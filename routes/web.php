@@ -33,6 +33,12 @@ Route::get('/', function () {
 //
 //});
 
+Route::get('/get', function () {
+    $user = \App\Models\Toggl::all();
+    !d($user->toArray());
+
+});
+
 Route::get('/git', function () {
     $locals = storage_path('app/public/data/') . 'locals.txt';
     $localsData = collect(explode("\n", file_get_contents($locals)));
