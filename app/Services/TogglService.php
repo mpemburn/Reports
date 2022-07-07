@@ -29,7 +29,7 @@ class TogglService
                 ->toDateString();
             $response = TogglApi::detailed($data);
         } else {
-            $response = TogglApi::detailedThisYear();
+            $response = TogglApi::detailedThisWeek();
         }
 
         collect($response)->each(function ($item) {
@@ -79,22 +79,22 @@ class TogglService
     protected function saveEntry(stdClass $entry): void
     {
         // Parse the ticket ID out of the description
-        preg_match('/(TS-[\d]+|TRAK-[\d]+)(.*)/', $entry->description, $matches);
+        preg_match('/(TS-[\d]+|TRAK-[\d]+|GSW-[\d]+)(.*)/', $entry->description, $matches);
 
-        if (isset($matches[1])) {
-            $toggl = new Toggl([
-                'public_id' => $entry->id,
-                'uid' => $entry->uid,
-                'ticket_id' => $matches[1],
-                'description' => trim($matches[2]),
-                'duration' => $entry->dur,
-                'start_time' => Carbon::parse($entry->start),
-                'end_time' => Carbon::parse($entry->end),
-                'updated' => Carbon::parse($entry->updated),
-            ]);
+        $toggl = new Toggl([
+            'public_id' => $entry->id,
+            'uid' => $entry->uid,
+            'ticket_id' => $matches[1] ?? null,
+            'client' => $entry->client,
+            'project' => $entry->project,
+            'description' => isset($matches[1]) ? trim($matches[2]) : $entry->description,
+            'duration' => $entry->dur,
+            'start_time' => Carbon::parse($entry->start),
+            'end_time' => Carbon::parse($entry->end),
+            'updated' => Carbon::parse($entry->updated),
+        ]);
 
-            $toggl->save();
-        }
+        $toggl->save();
     }
 
     protected function updateEntry(stdClass $entry, Toggl $toggl): void

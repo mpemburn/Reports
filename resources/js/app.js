@@ -8,11 +8,11 @@ window.Alpine = Alpine;
 Alpine.start();
 
 import { createApp } from 'vue'
-import CoolJs from "./components/CoolJs";
+import HackCheck from "./components/HackCheck";
 
 const app = createApp({});
 
 app.component('toggl-report', TogglReport);
-app.component('cool-js', CoolJs);
+app.component('hack-check', HackCheck);
 
 app.mount('#app');
