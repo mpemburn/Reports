@@ -2,8 +2,12 @@
 
 use App\Http\Controllers\LivewireController;
 use App\Http\Controllers\ReportController;
+use App\Models\Toggl;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
+use Ixudra\Toggl\Facades\Toggl as TogglApi;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,7 +40,11 @@ Route::get('/', function () {
 Route::get('/get', function () {
     $user = \App\Models\Toggl::all();
     !d($user->toArray());
+});
 
+Route::get('/csv', function () {
+    $service = new \App\Services\TogglService();
+    $service->exportCsv('Itecco', '07/06/2022', '07/11/2022');
 });
 
 Route::get('/git', function () {

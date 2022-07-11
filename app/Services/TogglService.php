@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Storage;
 use Ixudra\Toggl\Facades\Toggl as TogglApi;
 use App\Models\Toggl;
 use DateInterval;
@@ -30,6 +33,9 @@ class TogglService
             $response = TogglApi::detailed($data);
         } else {
             $response = TogglApi::detailedThisWeek();
+            if (! $response->data) {
+                $response = TogglApi::detailedLastWeek();
+            }
         }
 
         collect($response)->each(function ($item) {
@@ -76,10 +82,58 @@ class TogglService
             })->toArray();
     }
 
+    public function exportCsv(string $client, string $start = null, string $end = null)
+    {
+        if (! $start || ! $end) {
+            return null;
+        }
+
+        $records = Toggl::where('client', $client)
+            ->whereBetween('start_time', [Carbon::parse($start), Carbon::parse($end)])
+            ->get();
+
+        if (! File::exists(storage_path()."/reports")) {
+            File::makeDirectory(storage_path() . "/reports");
+        }
+
+        $name = str_replace('/', '-', "{$client}-{$start}-{$end}.csv");
+        $filename =  storage_path("reports/{$name}");
+
+        $handle = fopen($filename, 'wb');
+        fputcsv($handle, [
+            "Project",
+            "Ticket ID",
+            "Task",
+            "Dates",
+            "Duration",
+        ]);
+
+        $already = collect();
+        $records->each(function ($record) use ($handle, &$already) {
+            if ($already->contains($record->ticket_id)) {
+                return;
+            }
+            $dateSpan = $this->calculateDateSpan($record->ticket_id);
+            $total = $this->calculateDuration($record->ticket_id);
+            $duration = $this->durationToString($total);
+            fputcsv($handle, [
+                $record->project,
+                $record->ticket_id,
+                $record->description,
+                $dateSpan,
+                $duration
+            ]);
+            $already->push($record->ticket_id);
+        });
+
+        fclose($handle);
+    }
+
     protected function saveEntry(stdClass $entry): void
     {
         // Parse the ticket ID out of the description
         preg_match('/(TS-[\d]+|TRAK-[\d]+|GSW-[\d]+)(.*)/', $entry->description, $matches);
+
 
         $toggl = new Toggl([
             'public_id' => $entry->id,
@@ -87,7 +141,7 @@ class TogglService
             'ticket_id' => $matches[1] ?? null,
             'client' => $entry->client,
             'project' => $entry->project,
-            'description' => isset($matches[1]) ? trim($matches[2]) : $entry->description,
+            'description' => isset($matches[2]) ? trim($matches[2]) : $entry->description,
             'duration' => $entry->dur,
             'start_time' => Carbon::parse($entry->start),
             'end_time' => Carbon::parse($entry->end),
